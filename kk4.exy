@@ -1,0 +1,49 @@
+general:
+  startup: kk4.rb
+  core: gui
+  kcode: sjis
+
+resource:
+  icon:
+    -
+      width : 128
+      height: 128
+      color : 4
+      file  : kk4.ico
+  version:
+    file_version_number   : 0.1.0.0
+
+file:
+  kk4.rb:
+  Win32API.so:
+    file: C:/PROGRA~1/ruby-1.8/lib/ruby/1.8/i386-mswin32/Win32API.so
+    type: extension-library
+  swin.so:
+    file: C:/PROGRA~1/ruby-1.8/lib/ruby/vendor_ruby/1.8/i386-msvcrt/swin.so
+    type: extension-library
+  vr/compat/rubycompat.rb:
+    file: C:/PROGRA~1/ruby-1.8/lib/ruby/vendor_ruby/1.8/vr/compat/rubycompat.rb
+  vr/winconst.rb:
+    file: C:/PROGRA~1/ruby-1.8/lib/ruby/vendor_ruby/1.8/vr/winconst.rb
+  vr/rscutil.rb:
+    file: C:/PROGRA~1/ruby-1.8/lib/ruby/vendor_ruby/1.8/vr/rscutil.rb
+  vr/contrib/vrwincomponent.rb:
+    file: C:/PROGRA~1/ruby-1.8/lib/ruby/vendor_ruby/1.8/vr/contrib/vrwincomponent.rb
+  vr/vruby.rb:
+    file: C:/PROGRA~1/ruby-1.8/lib/ruby/vendor_ruby/1.8/vr/vruby.rb
+  vr/sysmod.rb:
+    file: C:/PROGRA~1/ruby-1.8/lib/ruby/vendor_ruby/1.8/vr/sysmod.rb
+  vr/compat/vrcontrol.rb:
+    file: C:/PROGRA~1/ruby-1.8/lib/ruby/vendor_ruby/1.8/vr/compat/vrcontrol.rb
+  vr/vrcontrol.rb:
+    file: C:/PROGRA~1/ruby-1.8/lib/ruby/vendor_ruby/1.8/vr/vrcontrol.rb
+  vr/vrlayout2.rb:
+    file: C:/PROGRA~1/ruby-1.8/lib/ruby/vendor_ruby/1.8/vr/vrlayout2.rb
+  vr/vrlayout.rb:
+    file: C:/PROGRA~1/ruby-1.8/lib/ruby/vendor_ruby/1.8/vr/vrlayout.rb
+  vr/dragdropformat.rb:
+    file: C:/PROGRA~1/ruby-1.8/lib/ruby/vendor_ruby/1.8/vr/dragdropformat.rb
+  vr/vrddrop.rb:
+    file: C:/PROGRA~1/ruby-1.8/lib/ruby/vendor_ruby/1.8/vr/vrddrop.rb
+  hpdf.so:
+    type: extension-library
