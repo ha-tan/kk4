@@ -22,6 +22,22 @@ class Rectangle
   end
 end
 
+class HPDFPage
+  def draw_rt(color, rt)
+    set_rgb_stroke(*color)
+    rectangle(*rt.to_pdf_ary)
+    stroke
+  end
+
+  def draw_text(font, size, s, rt)
+    set_font_and_size(font, size)
+    begin_text
+    move_text_pos(rt.x, rt.y)
+    show_text(s)
+    end_text
+  end
+end
+
 class Score
   def initialize(pdf = HPDFDoc.new)
     @pdf = pdf
@@ -66,21 +82,21 @@ class Score
 
     @col_rt = Rectangle.new(body_rt.x, body_rt.y, @csize, @csize)
 
-    draw_rt([1, 0, 0], title_rt, page)
-    draw_rt([1, 0, 0], body_rt, page)
+    # page.draw_rt([1, 0, 0], title_rt)
+    # page.draw_rt([1, 0, 0], body_rt)
 
     if @title
       rt1 = title_rt.add_xy(
         -@title_size,
         - (title_rt.h - @title.split(//).size * @title_size) / 6)
-      draw_text(@title_size, @title, rt1, page)
+      page.draw_text(@font, @title_size, @title, rt1)
     end
     
     if @author
       rt2 = title_rt.add_xy(
         - (title_rt.w - @author_size),
         - (title_rt.h - @author.split(//).size * @author_size) * 5 / 6)
-      draw_text(@author_size, @author, rt2, page)
+      page.draw_text(@font, @author_size, @author, rt2)
     end
   end
 
@@ -117,7 +133,7 @@ class Score
 
   def process_note(params)
     i = 0
-    notes = []
+    page_notes = []
     params.each do |param|
       next if param.kind_of?(CommandParam)
       new_page if i.zero?
@@ -126,17 +142,17 @@ class Score
       rt = @col_rt.add_xy(
         - (@csize + @rsep) * rindex - @rsep,
         - @csize * cindex)
-      draw_rt([0.8, 0.8, 0.8], rt, @pages.last)
+      @pages.last.draw_rt([0.8, 0.8, 0.8], rt)
 
-      notes[@pages.size - 1] ||= []
-      notes[@pages.size - 1] << param
+      page_notes[@pages.size - 1] ||= []
+      page_notes[@pages.size - 1] << param
 
       i = (i < @cnum * @rnum - 1) ? i + 1 : 0
     end
 
-    @pages.each_with_index do |page, i|
-      notes[i].each_with_index do |note, j|
-        rindex, cindex = j.divmod(@cnum)
+    @pages.zip(page_notes) do |page, page_note|
+      page_note.each_with_index do |note, i|
+        rindex, cindex = i.divmod(@cnum)
 
         rt = @col_rt.add_xy(
           - (@csize + @rsep) * rindex - @rsep,
@@ -145,11 +161,11 @@ class Score
         rt1 = rt.add_xy(
           - @csize / 2, 
           - (@csize - @note_size) / 2)
-        draw_text(@note_size, note.note[0], rt1, page)
+        page.draw_text(@font, @note_size, note.note[0], rt1)
         
         if note.note.size > 1
           rt1s = rt1.add_xy(@note_size / 2, 2)
-          draw_text(@note_size / 2, note.note[1], rt1s, page)
+          page.draw_text(@font, @note_size / 2, note.note[1], rt1s)
         end
         
         if note.noteex
@@ -162,18 +178,18 @@ class Score
               - @noteex_size / 2,
               - (@csize - @noteex_size) / 2)
           end
-          draw_text(@noteex_size, note.noteex, rt1ex, page)
+          page.draw_text(@font, @noteex_size, note.noteex, rt1ex)
         end
         
         if note.hnote
           rt2 = rt.add_xy(
             - @csize / 2, 
             - (@csize - @note_size) / 2 - @csize / 2 - 2)
-          draw_text(@hnote_size, note.hnote[0], rt2, page)
+          page.draw_text(@font, @hnote_size, note.hnote[0], rt2)
           
           if note.hnote.size > 1
             rt2s = rt2.add_xy(@hnote_size / 2, 2)
-            draw_text(@note_size / 2, note.hnote[1], rt2s, page)
+            page.draw_text(@font, @note_size / 2, note.hnote[1], rt2s)
           end
           
           if note.hnoteex
@@ -186,7 +202,7 @@ class Score
                 - @hnoteex_size / 2, 
                 - (@csize - @hnoteex_size) / 2 - @csize / 2)
             end
-            draw_text(@hnoteex_size, note.hnoteex, rt2ex, page)
+            page.draw_text(@font, @hnoteex_size, note.hnoteex, rt2ex)
           end
         end
         
@@ -195,7 +211,7 @@ class Score
             rt3 = rt.add_xy(
               @lnote_size / 2 + (@lnote_size + 2) * i + 2,
               - (@csize - l.split(//).size * @lnote_size) / 2)
-            draw_text(@lnote_size, l, rt3, page)
+            page.draw_text(@font, @lnote_size, l, rt3)
           end
         end
       end
@@ -208,30 +224,8 @@ class Score
       rt = Rectangle.new(
         (page.get_width - s.size * @pagenum_size / 2) / 2,
         @pagenum_margin, nil, nil)
-      draw_text_h(@pagenum_size, s, rt, page)
+      page.draw_text(@hfont, @pagenum_size, s, rt)
     end
-  end
-
-  def draw_rt(color, rt, page)
-    page.set_rgb_stroke(*color)
-    page.rectangle(*rt.to_pdf_ary)
-    page.stroke
-  end
-
-  def draw_text(size, s, rt, page)
-    page.set_font_and_size(@font, size)
-    page.begin_text
-    page.move_text_pos(rt.x, rt.y)
-    page.show_text(s)
-    page.end_text
-  end
-
-  def draw_text_h(size, s, rt, page)
-    page.set_font_and_size(@hfont, size)
-    page.begin_text
-    page.move_text_pos(rt.x, rt.y)
-    page.show_text(s)
-    page.end_text
   end
 
   def save(fname)
@@ -259,7 +253,6 @@ def preview(fname)
 end
 
 module DropFileViewerForm
-#  include VRFullsizeLayoutManager
   include VRVertLayoutManager
   include VRDropFileTarget
   
