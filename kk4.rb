@@ -40,48 +40,47 @@ class Score
     @noteex_size, @hnoteex_size = 8, 8
     @title_size, @author_size, @pagenum_size = 20, 16, 12
 
-    @page = nil
     @pages = []
-    @title_rt, @body_rt, @col_rt = nil, nil, nil
+    @col_rt = nil
 
     @title, @author = nil, nil
   end
 
   def new_page
-    @page = @pdf.add_page
-    @pages << @page
-    @page.set_size(HPDFDoc::HPDF_PAGE_SIZE_A4, HPDFDoc::HPDF_PAGE_LANDSCAPE)
-    @page.set_line_width(1)
+    page = @pdf.add_page
+    @pages << page
+    page.set_size(HPDFDoc::HPDF_PAGE_SIZE_A4, HPDFDoc::HPDF_PAGE_LANDSCAPE)
+    page.set_line_width(1)
 
     w = (@csize + @rsep) * @rnum + (@title_width + @title_sep)
     
-    @title_rt = Rectangle.new(
-      @page.get_width - (@page.get_width - w) / 2,
-      @page.get_height - (@page.get_height - @csize * @cnum) / 2,
+    title_rt = Rectangle.new(
+      page.get_width - (page.get_width - w) / 2,
+      page.get_height - (page.get_height - @csize * @cnum) / 2,
       @title_width, @csize * @cnum)
     
-    @body_rt = Rectangle.new(
-      @page.get_width - (@page.get_width - w) / 2 - (@title_width + @title_sep),
-      @page.get_height - (@page.get_height - @csize * @cnum) / 2,
+    body_rt = Rectangle.new(
+      page.get_width - (page.get_width - w) / 2 - (@title_width + @title_sep),
+      page.get_height - (page.get_height - @csize * @cnum) / 2,
       (@csize + @rsep) * @rnum, @csize * @cnum)
 
-    @col_rt = Rectangle.new(@body_rt.x, @body_rt.y, @csize, @csize)
+    @col_rt = Rectangle.new(body_rt.x, body_rt.y, @csize, @csize)
 
-    # draw_rt([1, 0, 0], @title_rt)
-    # draw_rt([1, 0, 0], @body_rt)
+    draw_rt([1, 0, 0], title_rt, page)
+    draw_rt([1, 0, 0], body_rt, page)
 
     if @title
-      rt1 = @title_rt.add_xy(
+      rt1 = title_rt.add_xy(
         -@title_size,
-        - (@title_rt.h - @title.split(//).size * @title_size) / 6)
-      draw_text(@title_size, @title, rt1)
+        - (title_rt.h - @title.split(//).size * @title_size) / 6)
+      draw_text(@title_size, @title, rt1, page)
     end
     
     if @author
-      rt2 = @title_rt.add_xy(
-        - (@title_rt.w - @author_size),
-        - (@title_rt.h - @author.split(//).size * @author_size) * 5 / 6)
-      draw_text(@author_size, @author, rt2)
+      rt2 = title_rt.add_xy(
+        - (title_rt.w - @author_size),
+        - (title_rt.h - @author.split(//).size * @author_size) * 5 / 6)
+      draw_text(@author_size, @author, rt2, page)
     end
   end
 
@@ -117,107 +116,89 @@ class Score
   end
 
   def process_note(params)
-    cindex, rindex = 0, 0
-    prev_hn, prev_hn_rt, prev_hns_rt, prev_page = nil, nil, nil, nil
-    prev_hnex, prev_hnex_rt = nil, nil
-
+    i = 0
+    notes = []
     params.each do |param|
       next if param.kind_of?(CommandParam)
+      new_page if i.zero?
 
-      new_page if cindex.zero? and rindex.zero?
-
+      rindex, cindex = i.divmod(@cnum)
       rt = @col_rt.add_xy(
         - (@csize + @rsep) * rindex - @rsep,
         - @csize * cindex)
-      draw_rt([0.8, 0.8, 0.8], rt)
+      draw_rt([0.8, 0.8, 0.8], rt, @pages.last)
 
-      if prev_hn
-        draw_text(@hnote_size, prev_hn[0], prev_hn_rt, prev_page)
+      notes[@pages.size - 1] ||= []
+      notes[@pages.size - 1] << param
 
-        if prev_hn.size > 1
-          prev_hn_rt1 = prev_hn_rt.add_xy(@hnote_size / 2, 2)
-          draw_text(@note_size / 2, prev_hn[1], prev_hn_rt1)
-        end
+      i = (i < @cnum * @rnum - 1) ? i + 1 : 0
+    end
 
-        if prev_hnex
-          draw_text(@hnoteex_size, prev_hnex, prev_hnex_rt, prev_page) 
-        end
+    @pages.each_with_index do |page, i|
+      notes[i].each_with_index do |note, j|
+        rindex, cindex = j.divmod(@cnum)
 
-        prev_hn, prev_hn_rt, prev_hns_rt, prev_page = nil, nil, nil, nil
-        prev_hnex, prev_hnex_rt = nil, nil
-      end
-
-      rt1 = rt.add_xy(
-        - @csize / 2, 
-        - (@csize - @note_size) / 2)
-      draw_text(@note_size, param.note[0], rt1)
-
-      if param.note.size > 1
-        rt1s = rt1.add_xy(@note_size / 2, 2)
-        draw_text(@note_size / 2, param.note[1], rt1s)
-      end
-
-      if param.noteex
-        if param.noteex == '„¡'
-          rt1ex = rt.add_xy(
-            - @noteex_size / 2 + 2,
-            - (@csize - @noteex_size) / 2 + @noteex_size)
-        else
-          rt1ex = rt.add_xy(
-            - @noteex_size / 2,
-            - (@csize - @noteex_size) / 2)
-        end
-        draw_text(@noteex_size, param.noteex, rt1ex)
-      end
-
-      if param.hnote
-        prev_hn = param.hnote
-        prev_hn_rt = rt.add_xy(
+        rt = @col_rt.add_xy(
+          - (@csize + @rsep) * rindex - @rsep,
+          - @csize * cindex)
+        
+        rt1 = rt.add_xy(
           - @csize / 2, 
-          - (@csize - @note_size) / 2 - @csize / 2 - 2)
-        prev_page = @page
-
-        if param.hnoteex
-          prev_hnex = param.hnoteex
-          if param.hnoteex == '„¡'
-            prev_hnex_rt = rt.add_xy(
-              - @hnoteex_size / 2 + 1, 
-              - (@csize - @hnoteex_size) / 2 - @csize / 2 + @hnoteex_size / 2 + 2)
+          - (@csize - @note_size) / 2)
+        draw_text(@note_size, note.note[0], rt1, page)
+        
+        if note.note.size > 1
+          rt1s = rt1.add_xy(@note_size / 2, 2)
+          draw_text(@note_size / 2, note.note[1], rt1s, page)
+        end
+        
+        if note.noteex
+          if note.noteex == '„¡'
+            rt1ex = rt.add_xy(
+              - @noteex_size / 2 + 2,
+              - (@csize - @noteex_size) / 2 + @noteex_size)
           else
-            prev_hnex_rt = rt.add_xy(
-              - @hnoteex_size / 2, 
-              - (@csize - @hnoteex_size) / 2 - @csize / 2)
+            rt1ex = rt.add_xy(
+              - @noteex_size / 2,
+              - (@csize - @noteex_size) / 2)
+          end
+          draw_text(@noteex_size, note.noteex, rt1ex, page)
+        end
+        
+        if note.hnote
+          rt2 = rt.add_xy(
+            - @csize / 2, 
+            - (@csize - @note_size) / 2 - @csize / 2 - 2)
+          draw_text(@hnote_size, note.hnote[0], rt2, page)
+          
+          if note.hnote.size > 1
+            rt2s = rt2.add_xy(@hnote_size / 2, 2)
+            draw_text(@note_size / 2, note.hnote[1], rt2s, page)
+          end
+          
+          if note.hnoteex
+            if note.hnoteex == '„¡'
+              rt2ex = rt.add_xy(
+                - @hnoteex_size / 2 + 1, 
+                - (@csize - @hnoteex_size) / 2 - @csize / 2 + @hnoteex_size / 2 + 2)
+            else
+              rt2ex = rt.add_xy(
+                - @hnoteex_size / 2, 
+                - (@csize - @hnoteex_size) / 2 - @csize / 2)
+            end
+            draw_text(@hnoteex_size, note.hnoteex, rt2ex, page)
+          end
+        end
+        
+        if note.lyrics and not note.lyrics.empty?
+          note.lyrics.reverse.each_with_index do |l, i|
+            rt3 = rt.add_xy(
+              @lnote_size / 2 + (@lnote_size + 2) * i + 2,
+              - (@csize - l.split(//).size * @lnote_size) / 2)
+            draw_text(@lnote_size, l, rt3, page)
           end
         end
       end
-
-      if param.lyrics and not param.lyrics.empty?
-        param.lyrics.reverse.each_with_index do |l, i|
-          rt2 = rt.add_xy(
-            @lnote_size / 2 + (@lnote_size + 2) * i + 2,
-            - (@csize - l.split(//).size * @lnote_size) / 2)
-          draw_text(@lnote_size, l, rt2)
-        end
-      end
-
-      cindex = (cindex >= @cnum - 1) ? 0 : cindex + 1
-      rindex = (rindex >= @rnum - 1) ? 0 : rindex + 1 if cindex.zero?
-    end
-
-    if prev_hn
-      draw_text(@hnote_size, prev_hn[0], prev_hn_rt, prev_page)
-      
-      if prev_hn.size > 1
-        prev_hn_rt1 = prev_hn_rt.add_xy(@hnote_size / 2, 2)
-        draw_text(@note_size / 2, prev_hn[1], prev_hn_rt1)
-      end
-      
-      if prev_hnex
-        draw_text(@hnoteex_size, prev_hnex, prev_hnex_rt, prev_page) 
-      end
-      
-      prev_hn, prev_hn_rt, prev_hns_rt, prev_page = nil, nil, nil, nil
-      prev_hnex, prev_hnex_rt = nil, nil
     end
   end
 
@@ -231,13 +212,13 @@ class Score
     end
   end
 
-  def draw_rt(color, rt, page = @page)
+  def draw_rt(color, rt, page)
     page.set_rgb_stroke(*color)
     page.rectangle(*rt.to_pdf_ary)
     page.stroke
   end
 
-  def draw_text(size, s, rt, page = @page)
+  def draw_text(size, s, rt, page)
     page.set_font_and_size(@font, size)
     page.begin_text
     page.move_text_pos(rt.x, rt.y)
@@ -245,7 +226,7 @@ class Score
     page.end_text
   end
 
-  def draw_text_h(size, s, rt, page = @page)
+  def draw_text_h(size, s, rt, page)
     page.set_font_and_size(@hfont, size)
     page.begin_text
     page.move_text_pos(rt.x, rt.y)
